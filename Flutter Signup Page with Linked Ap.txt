@@ -1,0 +1,110 @@
+// Flutter Signup Page with Linked App Checkboxes and Firebase Integration
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class UnifiedSignupPage extends StatefulWidget {
+  @override
+  _UnifiedSignupPageState createState() => _UnifiedSignupPageState();
+}
+
+class _UnifiedSignupPageState extends State<UnifiedSignupPage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  bool linkGingerTips = false;
+  bool linkOneDoctor = false;
+  bool linkLifeSync = false;
+
+  Future<void> registerUser() async {
+    try {
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+              email: emailController.text.trim(),
+              password: passwordController.text.trim());
+
+      final uid = userCredential.user?.uid;
+
+      if (uid != null) {
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'name': nameController.text.trim(),
+          'email': emailController.text.trim(),
+          'linkedApps': {
+            'gingerTips': linkGingerTips,
+            'oneDoctor': linkOneDoctor,
+            'lifeSync': linkLifeSync
+          },
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Registration error: \$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Create Unified Profile')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: 'Name'),
+                validator: (value) => value!.isEmpty ? 'Enter your name' : null,
+              ),
+              TextFormField(
+                controller: emailController,
+                decoration: InputDecoration(labelText: 'Email'),
+                validator: (value) =>
+                    value!.isEmpty ? 'Enter your email' : null,
+              ),
+              TextFormField(
+                controller: passwordController,
+                decoration: InputDecoration(labelText: 'Password'),
+                obscureText: true,
+                validator: (value) =>
+                    value!.length < 6 ? 'Password must be 6+ chars' : null,
+              ),
+              SizedBox(height: 20),
+              CheckboxListTile(
+                title: Text('GingerTips – Smart Food Companion'),
+                value: linkGingerTips,
+                onChanged: (value) =>
+                    setState(() => linkGingerTips = value ?? false),
+              ),
+              CheckboxListTile(
+                title: Text('One Doctor – Health Monitoring'),
+                value: linkOneDoctor,
+                onChanged: (value) =>
+                    setState(() => linkOneDoctor = value ?? false),
+              ),
+              CheckboxListTile(
+                title: Text('LifeSync – Daily Planner'),
+                value: linkLifeSync,
+                onChanged: (value) =>
+                    setState(() => linkLifeSync = value ?? false),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    registerUser();
+                  }
+                },
+                child: Text('Register'),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
